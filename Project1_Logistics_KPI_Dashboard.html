@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Last-Mile Delivery — KPI Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #00c896;
+    --accent2: #ff6b35;
+    --accent3: #7b61ff;
+    --warn: #f0a500;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --good: #00c896;
+    --bad: #f85149;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-family: 'Space Grotesk', sans-serif;
+    margin-bottom: 6px;
+  }
+  .header-left h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .header-left p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .badge {
+    background: rgba(0,200,150,0.12);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(0,200,150,0.3);
+    letter-spacing: 0.5px;
+  }
+  .period-selector {
+    display: flex;
+    gap: 4px;
+  }
+  .period-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+  }
+  .period-btn.active, .period-btn:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--accent); }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent-color, var(--accent));
+    border-radius: 12px 12px 0 0;
+  }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .kpi-delta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .kpi-delta .arrow { font-size: 14px; }
+  .delta-good { color: var(--good); }
+  .delta-bad  { color: var(--bad); }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .sparkline-wrap { margin-top: 12px; height: 36px; }
+
+  /* ── Charts grid ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .chart-card .chart-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── Bottom row ── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Route table ── */
+  .route-table { width: 100%; border-collapse: collapse; }
+  .route-table thead th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 0 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .route-table tbody tr {
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    transition: background 0.15s;
+  }
+  .route-table tbody tr:hover { background: var(--surface2); }
+  .route-table tbody td {
+    font-size: 12px;
+    padding: 9px 0;
+    color: var(--text);
+  }
+  .status-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+  }
+  .pill-green { background: rgba(0,200,150,0.15); color: var(--good); }
+  .pill-red   { background: rgba(248,81,73,0.15);  color: var(--bad); }
+  .pill-warn  { background: rgba(240,165,0,0.15);  color: var(--warn); }
+
+  /* ── Failure donut ── */
+  .legend-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-pct { margin-left: auto; font-weight: 600; color: var(--text); }
+
+  /* ── Zone heatmap ── */
+  .zone-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .zone-cell {
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .zone-cell:hover { transform: scale(1.04); }
+  .zone-cell .zone-name { font-size: 10px; color: rgba(255,255,255,0.7); margin-bottom: 4px; }
+  .zone-cell .zone-val  { font-size: 16px; font-weight: 700; color: #fff; font-family: 'Space Grotesk', sans-serif; }
+  .zone-cell .zone-lbl  { font-size: 9px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+  /* ── Insight banner ── */
+  .insight-banner {
+    background: linear-gradient(135deg, rgba(0,200,150,0.08), rgba(123,97,255,0.08));
+    border: 1px solid rgba(0,200,150,0.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .insight-icon { font-size: 18px; }
+  .insight-banner strong { color: var(--accent); }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="eyebrow">Operations Analytics</div>
+    <h1>Last-Mile Delivery — KPI Dashboard</h1>
+    <p>Berlin Metro Region · Simulated dataset · 6-month rolling window</p>
+  </div>
+  <div class="header-right">
+    <span class="badge">▲ LIVE SIMULATION</span>
+    <div class="period-selector">
+      <button class="period-btn" onclick="setPeriod(this,'7d')">7D</button>
+      <button class="period-btn active" onclick="setPeriod(this,'30d')">30D</button>
+      <button class="period-btn" onclick="setPeriod(this,'90d')">90D</button>
+    </div>
+  </div>
+</div>
+
+<!-- Insight banner -->
+<div class="insight-banner">
+  <span class="insight-icon">⚡</span>
+  <span><strong>Key insight:</strong> Zone Mitte shows 94.2% on-time rate but carries the highest cost-per-delivery (€4.80). Pankow routes have lowest failure rate (3.1%) — candidate for operational benchmark.</span>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card" style="--accent-color:#00c896">
+    <div class="kpi-label">On-Time Delivery Rate</div>
+    <div class="kpi-value" style="color:#00c896">91.4%</div>
+    <div class="kpi-delta delta-good"><span class="arrow">↑</span> +2.3pp vs last period</div>
+    <div class="kpi-sub">Target: 92.0% &nbsp;|&nbsp; Industry avg: 88.5%</div>
+    <div class="sparkline-wrap"><canvas id="spark1"></canvas></div>
+  </div>
+  <div class="kpi-card" style="--accent-color:#ff6b35">
+    <div class="kpi-label">Avg Cost per Delivery</div>
+    <div class="kpi-value" style="color:#ff6b35">€3.84</div>
+    <div class="kpi-delta delta-bad"><span class="arrow">↑</span> +€0.18 vs last period</div>
+    <div class="kpi-sub">Fuel surcharge impact: +€0.11</div>
+    <div class="sparkline-wrap"><canvas id="spark2"></canvas></div>
+  </div>
+  <div class="kpi-card" style="--accent-color:#7b61ff">
+    <div class="kpi-label">First-Attempt Success</div>
+    <div class="kpi-value" style="color:#7b61ff">84.7%</div>
+    <div class="kpi-delta delta-good"><span class="arrow">↑</span> +1.1pp vs last period</div>
+    <div class="kpi-sub">Failed attempts cost avg €1.20 each</div>
+    <div class="sparkline-wrap"><canvas id="spark3"></canvas></div>
+  </div>
+  <div class="kpi-card" style="--accent-color:#f0a500">
+    <div class="kpi-label">Avg Delivery Time</div>
+    <div class="kpi-value" style="color:#f0a500">2.4h</div>
+    <div class="kpi-delta delta-good"><span class="arrow">↓</span> −12 min vs last period</div>
+    <div class="kpi-sub">SLA threshold: 3.0h</div>
+    <div class="sparkline-wrap"><canvas id="spark4"></canvas></div>
+  </div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3>Weekly Delivery Volume vs On-Time Rate</h3>
+    <div class="chart-sub">Parcels dispatched (bars) · OTD % (line) · 24 weeks</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="volumeChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h3>Failure Reason Breakdown</h3>
+    <div class="chart-sub">Share of failed deliveries by root cause</div>
+    <div class="chart-wrap" style="height:160px"><canvas id="failureChart"></canvas></div>
+    <div class="legend-list" id="failureLegend"></div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="bottom-grid">
+  <div class="chart-card">
+    <h3>Top Routes — Performance</h3>
+    <div class="chart-sub" style="margin-bottom:12px">On-time rate · volume · cost</div>
+    <table class="route-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>OTD%</th>
+          <th>Vol</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="routeBody"></tbody>
+    </table>
+  </div>
+
+  <div class="chart-card">
+    <h3>Cost per Delivery Trend</h3>
+    <div class="chart-sub">Monthly avg cost (€) · 6 months</div>
+    <div class="chart-wrap" style="height:170px"><canvas id="costChart"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Zone Heatmap — OTD Rate</h3>
+    <div class="chart-sub">Darker = higher on-time performance</div>
+    <div class="zone-grid" id="zoneGrid"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <span>Built by <strong>Kumar Aditya</strong> · SRH Berlin, M.A. International Management · 2025</span>
+  <span>Tools: Python (Pandas, NumPy) · Chart.js · Simulated operational dataset</span>
+</div>
+
+<script>
+// ── Utility ──────────────────────────────────────────────────────────────────
+const rand = (min,max) => Math.random()*(max-min)+min;
+const randInt = (min,max) => Math.floor(rand(min,max));
+
+Chart.defaults.color = '#7d8590';
+Chart.defaults.borderColor = '#30363d';
+Chart.defaults.font.family = 'Inter';
+
+// ── Sparklines ────────────────────────────────────────────────────────────────
+function sparkline(id, data, color) {
+  new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels: data.map((_,i)=>i),
+      datasets: [{ data, borderColor: color, borderWidth: 2, pointRadius: 0,
+        fill: true,
+        backgroundColor: color+'22',
+        tension: 0.4 }]
+    },
+    options: {
+      plugins: { legend: { display:false }, tooltip: { enabled:false } },
+      scales: { x:{display:false}, y:{display:false} },
+      animation: false,
+      responsive: true, maintainAspectRatio: false
+    }
+  });
+}
+
+sparkline('spark1', [88,87,89,88.5,90,91,90.5,91.4], '#00c896');
+sparkline('spark2', [3.50,3.55,3.60,3.72,3.68,3.75,3.80,3.84], '#ff6b35');
+sparkline('spark3', [81,82,83,82.5,83,84,84.5,84.7], '#7b61ff');
+sparkline('spark4', [2.9,2.8,2.75,2.65,2.6,2.55,2.45,2.4], '#f0a500');
+
+// ── Volume + OTD line chart ───────────────────────────────────────────────────
+const weeks = Array.from({length:24},(_,i)=>`W${i+1}`);
+const volumes = weeks.map(()=>randInt(1800,3200));
+const otd = weeks.map(()=>parseFloat((rand(86,94)).toFixed(1)));
+
+new Chart(document.getElementById('volumeChart'), {
+  type: 'bar',
+  data: {
+    labels: weeks,
+    datasets: [
+      {
+        label: 'Parcels',
+        data: volumes,
+        backgroundColor: 'rgba(123,97,255,0.25)',
+        borderColor: 'rgba(123,97,255,0.6)',
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'OTD %',
+        data: otd,
+        type: 'line',
+        borderColor: '#00c896',
+        backgroundColor: 'rgba(0,200,150,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#00c896',
+        tension: 0.4,
+        fill: true,
+        yAxisID: 'y1',
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position:'top', labels:{ boxWidth:12, font:{size:11} } },
+      tooltip: { mode:'index', intersect:false }
+    },
+    scales: {
+      y: {
+        type:'linear', position:'left',
+        title:{ display:true, text:'Parcels', font:{size:10} },
+        grid:{ color:'rgba(255,255,255,0.04)' }
+      },
+      y1: {
+        type:'linear', position:'right',
+        title:{ display:true, text:'OTD %', font:{size:10} },
+        min:82, max:97,
+        grid:{ drawOnChartArea:false }
+      }
+    }
+  }
+});
+
+// ── Failure donut ─────────────────────────────────────────────────────────────
+const failureData = [38, 24, 17, 12, 9];
+const failureLabels = ['Recipient absent','Wrong address','Access issue','Damaged parcel','Refused delivery'];
+const failureColors = ['#ff6b35','#f0a500','#7b61ff','#00c896','#f85149'];
+
+new Chart(document.getElementById('failureChart'), {
+  type: 'doughnut',
+  data: {
+    labels: failureLabels,
+    datasets: [{ data: failureData, backgroundColor: failureColors,
+      borderColor: '#161b22', borderWidth: 3, hoverOffset: 6 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: { legend:{ display:false }, tooltip:{ callbacks:{
+      label: ctx => ` ${ctx.label}: ${ctx.raw}%`
+    }}}
+  }
+});
+
+const legEl = document.getElementById('failureLegend');
+failureLabels.forEach((l,i)=>{
+  legEl.innerHTML += `<div class="legend-item">
+    <div class="legend-dot" style="background:${failureColors[i]}"></div>
+    <span>${l}</span>
+    <span class="legend-pct">${failureData[i]}%</span>
+  </div>`;
+});
+
+// ── Route table ───────────────────────────────────────────────────────────────
+const routes = [
+  ['Mitte → Prenzlauer Berg', '94.2%', '3,140', 'pill-green'],
+  ['Pankow → Weißensee',     '93.8%', '2,890', 'pill-green'],
+  ['Spandau → Charlottenburg','88.1%', '2,410', 'pill-warn'],
+  ['Neukölln → Tempelhof',   '86.3%', '2,210', 'pill-warn'],
+  ['Marzahn → Hellersdorf',  '81.2%', '1,780', 'pill-red'],
+  ['Steglitz → Zehlendorf',  '79.4%', '1,620', 'pill-red'],
+];
+const rb = document.getElementById('routeBody');
+routes.forEach(([route,otd,vol,cls])=>{
+  rb.innerHTML += `<tr>
+    <td>${route}</td>
+    <td><strong>${otd}</strong></td>
+    <td>${vol}</td>
+    <td><span class="status-pill ${cls}">${cls==='pill-green'?'✓ Good':cls==='pill-warn'?'⚠ Watch':'✗ Risk'}</span></td>
+  </tr>`;
+});
+
+// ── Cost trend ────────────────────────────────────────────────────────────────
+new Chart(document.getElementById('costChart'), {
+  type: 'line',
+  data: {
+    labels: ['Jan','Feb','Mar','Apr','May','Jun'],
+    datasets: [{
+      label: 'Cost/Delivery (€)',
+      data: [3.50, 3.55, 3.63, 3.70, 3.78, 3.84],
+      borderColor: '#ff6b35',
+      backgroundColor: 'rgba(255,107,53,0.1)',
+      borderWidth: 2.5,
+      pointRadius: 5,
+      pointBackgroundColor: '#ff6b35',
+      fill: true, tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend:{ display:false } },
+    scales: {
+      y: { title:{ display:true, text:'€', font:{size:10} }, min:3.3, max:4.1,
+           grid:{ color:'rgba(255,255,255,0.04)' } },
+      x: { grid:{ display:false } }
+    }
+  }
+});
+
+// ── Zone heatmap ─────────────────────────────────────────────────────────────
+const zones = [
+  {name:'Mitte',    val:94.2, cost:'€4.80'},
+  {name:'Pankow',   val:93.8, cost:'€3.60'},
+  {name:'Prenzl.B', val:92.1, cost:'€3.50'},
+  {name:'Lichtbg',  val:90.4, cost:'€3.40'},
+  {name:'Charlbg',  val:88.1, cost:'€3.90'},
+  {name:'Neukölln', val:86.3, cost:'€3.70'},
+  {name:'Marzahn',  val:81.2, cost:'€3.20'},
+  {name:'Steglitz', val:79.4, cost:'€3.30'},
+];
+
+function zoneColor(val) {
+  // green to orange gradient based on OTD
+  const t = (val - 75) / 25; // 0–1
+  const r = Math.round(255*(1-t*0.6));
+  const g = Math.round(100 + 100*t);
+  const b = Math.round(50);
+  return `rgba(${r},${g},${b},0.75)`;
+}
+
+const zg = document.getElementById('zoneGrid');
+zones.forEach(z=>{
+  zg.innerHTML += `<div class="zone-cell" style="background:${zoneColor(z.val)}" title="Cost: ${z.cost}">
+    <div class="zone-name">${z.name}</div>
+    <div class="zone-val">${z.val}%</div>
+    <div class="zone-lbl">${z.cost}/pkg</div>
+  </div>`;
+});
+
+// ── Period toggle ─────────────────────────────────────────────────────────────
+function setPeriod(btn, period) {
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
